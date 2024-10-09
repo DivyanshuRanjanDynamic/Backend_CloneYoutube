@@ -9,15 +9,23 @@ import dBconnect from "./db/index.js";
   
   
   
-  dBconnect()
-//   .then(()=>
-// {
-//     console.log("connected to database")
-// })
-// .catch((error)=>
-// {
-//     console.log(error);
-// })
+dBconnect()  // dB connection is asyncronous function  that returns a promises .so, after creating app.js file and intilizing app variable write the below logic 
+  .then(()=>
+{
+   app.listen(process.env.PORT||8000,()=>
+{
+    console.log(`Server is running on PORT:${process.env.PORT}`)
+})
+ app.on("error",(error)=>
+{
+    console.error("Error occurred while running server",error)
+})
+
+})
+.catch((error)=>
+{
+    console.log(error);
+})
 
   
   
