@@ -39,3 +39,6 @@ const uploadOnCloudinary= async (localStorageURL)=>
     return null;
   }
 }
+
+
+export default uploadOnCloudinary
