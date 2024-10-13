@@ -22,18 +22,33 @@ const registerUser= asyncHandler(  async ( req, res )=>
     throw new ApiError(400,"All fields are required")
   }
 //validate the users information - like email is on the correct formate  and verify the email domain using DNS lookup
-if(!validator.isEmail(req.body.email))
+async function validateEmail(email) {
+    // Validate email format
+    if (!validator.isEmail(email)) {
+        throw new ApiError(200, "Format of your email is incorrect");
+    }
+
+    // Extract domain from email
+    const domain = email.split("@")[1];
+
+    try {
+        // Use await to resolve the MX records
+        const addresses = dns.resolveMx(domain);
+
+        // Check if addresses are found
+        if (addresses.length === 0) {
+            throw new ApiError(402, "Domain name is invalid");
+        }
+    } catch (err) {
+        throw new ApiError(402, "Domain name is invalid");
+    }
+}
+ 
+if(!validateEmail(email))
 {
-       throw new ApiError(200,"Formate of your email is incorrect")
+  throw new ApiError(400,"Wrong Email")
 }
 
- await dns.resolveMx(req.body.email.split("@")[1],  (err,address)=>
-{
-    if(err || address.length ===  0)
-    {
-         throw new ApiError(402,"Domain name is invalid") 
-    }
-})
 //to ensure that the password given by user is strong or suggest them a strong password 
 
 
@@ -41,7 +56,7 @@ if(!validator.isEmail(req.body.email))
 const generateStrongPassword=(length=10)=>
 {
     const chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=';
-    const randomBytes=crypto.randomBytes(length)  //randomBytes in Node.js returns a Buffer, which is a type of array-like object that contains raw binary data. A Buffer contains binary data, and each element is a byte (0-255).we can easily convert the buffer to a regular array if needed for processing by  this Array.from(randomBytes); where randomBytes returns " Buffer"
+    const randomBytes=crypto.randomBytes(length)  //randomBytes in Node.js returns a Buffer, which is a type of array-like object that contains raw binary data. A Buffer contains binary data, and each element is a byte (0-255).we can easily convert the buffer to a regular array if needed for processing by using  this Array.from(randomBytes); where randomBytes returns " Buffer"
     const passwordArray=[];
 
     //map each byte to a character from the "chars" string 
@@ -86,7 +101,7 @@ const generateStrongPassword=(length=10)=>
 //check if the user is already exists :via userName and email
  const existingUser = await User.findOne(
     { 
-    $or: [{ userName }, { email },{fullName}] 
+    $or: [{ username }, { email },{fullName}] 
     }
 );
 if(existingUser)

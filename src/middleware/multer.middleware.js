@@ -1,9 +1,10 @@
 import multer from "multer"
 
-const storage = multer.diskStorage({
+const storage = multer.diskStorage(
+  {
     destination: function (req, file, cb) {
       cb(null, "./public/temp")
-    },
+        },
     filename: function (req, file, cb) {
        
         cb(null, file.originalname)
@@ -16,4 +17,5 @@ const storage = multer.diskStorage({
         }
     )
 
-    
+   //diskStorage is a storage space for uploading files,images,photos
+   //cb is a callback function  
