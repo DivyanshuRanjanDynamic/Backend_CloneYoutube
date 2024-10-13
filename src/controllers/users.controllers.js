@@ -1,14 +1,15 @@
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/apiError.js"
+import { ApiResponse } from "../utils/apiResponse.js"
 import validator from "validator" // it is used to validate that our email is of correct formate along with the domain name
 import dns from "dns" // Verify the Email Domain Using DNS Lookup
 import {z} from "zod";//for the schemas of password ,email,etc...
 import zxcvbn from "zxcvbn";// provide the score between 0 to 4 to the passwords according to its strengh .if score is =>3 ,it is cosider as strong password 
 import crypto from "crypto";//this is for sggesting and generating  a strong password 
- import { AsyncResponse } from "../utils/asyncResponse.js";
  import { User } from "../modals/users.model.js";
- 
+ import { ImageAnnotatorClient } from '@google-cloud/vision';//Import the Google Cloud Vision client library
 
+const client =new ImageAnnotatorClient();
 
 const registerUser= asyncHandler(  async ( req, res )=>
 {
@@ -80,30 +81,81 @@ const generateStrongPassword=(length=10)=>
     {
         const suggestedPassword = generateStrongPassword();
         return  new AsyncResponse("Password is weak!",405,suggestedPassword)
-        
     }
 
 //check if the user is already exists :via userName and email
- const existingUser = await User.findOne({ $or: [{ userName }, { email }] });
-
+ const existingUser = await User.findOne(
+    { 
+    $or: [{ userName }, { email },{fullName}] 
+    }
+);
 if(existingUser)
     {
         throw new ApiError(409, "User with email or username already exists");
     }
 
- //check for images ,check for avtar ,image is not related to promote any kind of pornography
+ //check for images ,check for avtar ,image is not related to promote any kind of pornography\
 
 
+//  console.log(req.files); same as req.body there is req.files which is added because of multer middleware...middleware are nothing but providing extra features or funtionality 
 
-  
+const avatarLocalPath=req.files?.avatar[0]?.path;
+if(!avatarLocalPath){
+    throw new ApiError(400, "Avatar is required");
+}
 
-   
-    //upload them on cloudinary 
-    //create user object and upload the entry on the database
-    //remove the password and refresh token from the response 
-    //check for user creation 
+//  const coverImageLocalPath=req.files?coverImage[0]?.path;
+let coverImageLocalPath;
+ if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length>0)
+ {
+     coverImageLocalPath=req.files.coverImage.path
+ }
+//before uploading to cloudinary  check the coverPhoto and avtar is not contaning an inappropriate content  by using google vision api 
+     //for avtar  and coverImage check
+const [avatar1] = await client.safeSearchDetection(avatarLocalPath);
+    const safeSearchOfAvatar = avatar1.safeSearchAnnotation;
+
+ const [coverImage1] = await client.safeSearchDetection(coverImageLocalPath);
+     const safeSearchOfCoverImage = coverImage1.safeSearchAnnotation;
+
+    if (safeSearchOfAvatar.adult>=3  || safeSearchOfAvatar.racy>=3 ||safeSearchOfCoverImage.adult>=3 || safeSearchOfCoverImage.racy>=3)
+    {
+        throw new ApiError(400,"You uploaded an inappropriate avtar or CoverImage ")
+    }
+    else{
+        //uploading to cloudinary
+        const avatar=uploadOnCloudinary(avatarLocalPath);
+         const coverImage=uploadOnCloudinary(coverImageLocalPath);
+        // here again we check for avatar, that it is uploaded  by user or not ,after uploading it to the cloudinary,because it is a required and it is a  compulsary field
+        if(!avatar){
+            throw new ApiError(400, "Avatar is required");
+         }
+
+//create user object and upload the entry on the database
+         const user= await User.create(
+            {
+                fullName,
+                email,
+                password,
+                avatar: avatar.url,
+                coverImage: coverImage?.url || "",
+                username:username.toLowercase()
+            }
+         )
+//remove the password and refresh token from the response
+const createdUser=User.findById((user._id),select(
+    "-password - refreshToken"))
+    //"select" fuction is used to not allow to show some specific information of user 
+       //check for user creation   
+    if(!createdUser){
+        throw new ApiError(500, "User creation failed")
+    }
     //return res
     //send a success message to the user
-})
+     return res.status(201).json(
+        new ApiResponse(200,createdUser,"User Register Sucessfully")
+     )
+    }
+} )
 
 export {registerUser}
