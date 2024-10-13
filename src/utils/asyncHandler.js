@@ -27,4 +27,4 @@ const asyncHandler=(requestHandler)=>{
 
   
 // }
-export {ayncHandler}
+export {asyncHandler}

@@ -1,4 +1,4 @@
-class AsyncError extends Error{
+class ApiError extends Error{
     constructor(message="Someting went wrong ", status_code,stack="", error=[]){
         super(message);
         this.status_code=status_code
@@ -15,4 +15,4 @@ class AsyncError extends Error{
     }
 }
 
-export {AsyncError}
+export {ApiError}
