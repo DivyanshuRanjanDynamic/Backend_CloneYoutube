@@ -34,6 +34,7 @@ const userSchema=new mongoose.Schema(
             unique:true,
             lowercase:true,
             trim:true,
+            index:true
         },
         avatar:
         {
@@ -43,17 +44,16 @@ const userSchema=new mongoose.Schema(
         coverImage:
         {
             type:String,
-            required:true,
+           
         },
         password:
         {
             type:String,
-            required:true,
+            required:[true,'Password is required'],
         },
         refreshToken:
         {
             type:String,
-            required:true,
         }
     },
     {timestamps:true}

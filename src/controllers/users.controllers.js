@@ -2,14 +2,17 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/apiError.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 import validator from "validator" // it is used to validate that our email is of correct formate along with the domain name
-import dns from "dns" // Verify the Email Domain Using DNS Lookup
+// import dns from "dns" // Verify the Email Domain Using DNS Lookup
 import {z} from "zod";//for the schemas of password ,email,etc...
 import zxcvbn from "zxcvbn";// provide the score between 0 to 4 to the passwords according to its strengh .if score is =>3 ,it is cosider as strong password 
 import crypto from "crypto";//this is for sggesting and generating  a strong password 
  import { User } from "../modals/users.model.js";
- import { ImageAnnotatorClient } from '@google-cloud/vision';//Import the Google Cloud Vision client library
+//  import { ImageAnnotatorClient } from '@google-cloud/vision';//Import the Google Cloud Vision client library
+ import  {uploadOnCloudinary} from "../utils/cloudinary.js"
+import { console } from "inspector";
 
-const client =new ImageAnnotatorClient();
+
+// const client =new ImageAnnotatorClient();
 
 const registerUser= asyncHandler(  async ( req, res )=>
 {
@@ -22,34 +25,39 @@ const registerUser= asyncHandler(  async ( req, res )=>
     throw new ApiError(400,"All fields are required")
   }
 //validate the users information - like email is on the correct formate  and verify the email domain using DNS lookup
-async function validateEmail(email) {
-    // Validate email format
-    if (!validator.isEmail(email)) {
-        throw new ApiError(200, "Format of your email is incorrect");
-    }
-
-    // Extract domain from email
-    const domain = email.split("@")[1];
-
-    try {
-        // Use await to resolve the MX records
-        const addresses = dns.resolveMx(domain);
-
-        // Check if addresses are found
-        if (addresses.length === 0) {
-            throw new ApiError(402, "Domain name is invalid");
-        }
-    } catch (err) {
-        throw new ApiError(402, "Domain name is invalid");
-    }
+   // Validate email format
+   if (!validator.isEmail(email)) {
+    throw new ApiError(200, "Format of your email is incorrect");
 }
+
+// async function validateEmail(email) {
+//     // Validate email format
+//     if (!validator.isEmail(email)) {
+//         throw new ApiError(200, "Format of your email is incorrect");
+//     }
+
+//     // Extract domain from email
+//     const domain = email.split("@")[1];
+
+//     try {
+//         // Use await to resolve the MX records
+//         const addresses = dns.resolveMx(domain);
+
+//         // Check if addresses are found
+//         if (addresses.length === 0) {
+//             throw new ApiError(400, "Domain not found");
+//         }
+//     } catch (err) {
+//         throw new ApiError(400, "Domain name is invalid");
+//     }
+// }
  
-if(!validateEmail(email))
-{
-  throw new ApiError(400,"Wrong Email")
-}
+// if(!validateEmail(email))
+//  {
+//    new ApiError(400,"Wrong Email")
+//  }
 
-//to ensure that the password given by user is strong or suggest them a strong password 
+//to ensure that the password given by user is strong or not ,if not then  suggest them/him a strong password 
 
 
      //Function to generate a cryptographically secure strong password
@@ -79,7 +87,7 @@ const generateStrongPassword=(length=10)=>
      //check password strength using zxcvbn
  const isPasswordstrong=( async(password) =>
     {
-          const result= await zxcvbn(password);
+          const result= zxcvbn(password);
           return result.score >= 3;
     }
     )
@@ -94,7 +102,7 @@ const generateStrongPassword=(length=10)=>
     //check the password is strong enough 
     if(!isPasswordstrong(password))
     {
-        const suggestedPassword = generateStrongPassword();
+        const suggestedPassword =  generateStrongPassword();
         return  new AsyncResponse("Password is weak!",405,suggestedPassword)
     }
 
@@ -103,10 +111,10 @@ const generateStrongPassword=(length=10)=>
     { 
     $or: [{ username }, { email },{fullName}] 
     }
-);
+)
 if(existingUser)
     {
-        throw new ApiError(409, "User with email or username already exists");
+        new ApiError(409, "User with email or username already exists");
     }
 
  //check for images ,check for avtar ,image is not related to promote any kind of pornography\
@@ -114,37 +122,45 @@ if(existingUser)
 
 //  console.log(req.files); same as req.body there is req.files which is added because of multer middleware...middleware are nothing but providing extra features or funtionality 
 
-const avatarLocalPath=req.files?.avatar[0]?.path;
+
+let avatarLocalPath;
+
+if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0)
+{
+    avatarLocalPath=req.files.avatar[0].path;
+}
+
 if(!avatarLocalPath){
-    throw new ApiError(400, "Avatar is required");
+    new ApiError(400, "Avatar file  is required");
 }
 
 //  const coverImageLocalPath=req.files?coverImage[0]?.path;
 let coverImageLocalPath;
- if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length>0)
+ if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0)
  {
-     coverImageLocalPath=req.files.coverImage.path
+     coverImageLocalPath=req.files.coverImage[0].path
  }
 //before uploading to cloudinary  check the coverPhoto and avtar is not contaning an inappropriate content  by using google vision api 
      //for avtar  and coverImage check
-const [avatar1] = await client.safeSearchDetection(avatarLocalPath);
-    const safeSearchOfAvatar = avatar1.safeSearchAnnotation;
+// const [avatar1] = await client.safeSearchDetection(avatarLocalPath);
+//     const safeSearchOfAvatar = avatar1.safeSearchAnnotation;
 
- const [coverImage1] = await client.safeSearchDetection(coverImageLocalPath);
-     const safeSearchOfCoverImage = coverImage1.safeSearchAnnotation;
+//  const [coverImage1] = await client.safeSearchDetection(coverImageLocalPath);
+//      const safeSearchOfCoverImage = coverImage1.safeSearchAnnotation;
 
-    if (safeSearchOfAvatar.adult>=3  || safeSearchOfAvatar.racy>=3 ||safeSearchOfCoverImage.adult>=3 || safeSearchOfCoverImage.racy>=3)
-    {
-        throw new ApiError(400,"You uploaded an inappropriate avtar or CoverImage ")
-    }
-    else{
+//     if (safeSearchOfAvatar.adult>=3  || safeSearchOfAvatar.racy>=3 ||safeSearchOfCoverImage.adult>=3 || safeSearchOfCoverImage.racy>=3)
+//     {
+//         throw new ApiError(400,"You uploaded an inappropriate avtar or CoverImage ")
+//     }
+    // else{
         //uploading to cloudinary
-        const avatar=uploadOnCloudinary(avatarLocalPath);
-         const coverImage=uploadOnCloudinary(coverImageLocalPath);
-        // here again we check for avatar, that it is uploaded  by user or not ,after uploading it to the cloudinary,because it is a required and it is a  compulsary field
-        if(!avatar){
-            throw new ApiError(400, "Avatar is required");
+        const avatar= await uploadOnCloudinary(avatarLocalPath);
+         const coverImage= await uploadOnCloudinary(coverImageLocalPath);
+      //  here again we check for avatar, that it is uploaded  by user or not ,after uploading it to the cloudinary,because it is a required and it is a  compulsary field
+         if(!avatar){
+         new ApiError(400, "Avatar is required");
          }
+         console.log(avatar);
 
 //create user object and upload the entry on the database
          const user= await User.create(
@@ -152,14 +168,14 @@ const [avatar1] = await client.safeSearchDetection(avatarLocalPath);
                 fullName,
                 email,
                 password,
-                avatar: avatar.url,
+                avatar: avatar ?.url || (new ApiError(400,"it is a required field")),
                 coverImage: coverImage?.url || "",
-                username:username.toLowercase()
+                username:username.toLowerCase()
             }
          )
 //remove the password and refresh token from the response
-const createdUser=User.findById((user._id),select(
-    "-password - refreshToken"))
+const createdUser= await User.findById(user._id).select(
+    "-password -refreshToken")
     //"select" fuction is used to not allow to show some specific information of user 
        //check for user creation   
     if(!createdUser){
@@ -171,6 +187,6 @@ const createdUser=User.findById((user._id),select(
         new ApiResponse(200,createdUser,"User Register Sucessfully")
      )
     }
-} )
+ )
 
 export {registerUser}
