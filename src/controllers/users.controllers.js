@@ -9,7 +9,7 @@ import crypto from "crypto";//this is for sggesting and generating  a strong pas
  import { User } from "../modals/users.model.js";
 //  import { ImageAnnotatorClient } from '@google-cloud/vision';//Import the Google Cloud Vision client library
  import  {uploadOnCloudinary} from "../utils/cloudinary.js"
-import { console } from "inspector";
+
 
 
 // const client =new ImageAnnotatorClient();
@@ -41,7 +41,7 @@ const registerUser= asyncHandler(  async ( req, res )=>
 
 //     try {
 //         // Use await to resolve the MX records
-//         const addresses = dns.resolveMx(domain);
+//         const addresses =  await dns.resolveMx(domain);
 
 //         // Check if addresses are found
 //         if (addresses.length === 0) {
@@ -61,10 +61,12 @@ const registerUser= asyncHandler(  async ( req, res )=>
 
 
      //Function to generate a cryptographically secure strong password
-const generateStrongPassword=(length=10)=>
+const generateStrongPassword= ( (length = 10)=>
 {
     const chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=';
-    const randomBytes=crypto.randomBytes(length)  //randomBytes in Node.js returns a Buffer, which is a type of array-like object that contains raw binary data. A Buffer contains binary data, and each element is a byte (0-255).we can easily convert the buffer to a regular array if needed for processing by using  this Array.from(randomBytes); where randomBytes returns " Buffer"
+    const randomBytes= Array.from(crypto.randomBytes(length)); //randomBytes in Node.js returns a Buffer, which is a type of array-like object that contains raw binary data. A Buffer contains binary data, and each element is a byte (0-255).we can easily convert the buffer to a regular array if needed for processing by using  this Array.from(randomBytes); where randomBytes returns " Buffer"
+ //randomBytes in Node.js returns a Buffer, which is a type of array-like object that contains raw binary data. A Buffer contains binary data, and each element is a byte (0-255).we can easily convert the buffer to a regular array if needed for processing by using  this Array.from(randomBytes); where randomBytes returns " Buffer"
+  //randomBytes in Node.js returns a Buffer, which is a type of array-like object that contains raw binary data. A Buffer contains binary data, and each element is a byte (0-255).we can easily convert the buffer to a regular array if needed for processing by using  this Array.from(randomBytes); where randomBytes returns " Buffer"
     const passwordArray=[];
 
     //map each byte to a character from the "chars" string 
@@ -74,48 +76,51 @@ const generateStrongPassword=(length=10)=>
         passwordArray.push(chars[randomIndex])
     }
     return passwordArray.join(''); //return the password as a string 
-}
+})
 
      // zod schema for strong password 
-     const passwordSchema=z.string()
-     .min(6,"Passsword must be atleast 6 Character long")
-     .regex(/[A-Z]/,"Passsword must have  atleast one upperCase Letter")
-     .regex(/[a-z]/,"Passsword must have atleast one lowerCase Letter")
-     .regex(/[@!#$%^&*(),.?":{}|<>~]/,'Passsword must have atleast one symbol')
-     .regex(/[0-9]/,'Passsword must have atleast one number')
+    // const passwordSchema=z.string()
+    // .min(6,"Passsword must be atleast 6 Character long")
+    // .regex(/[A-Z]/,"Passsword must have  atleast one upperCase Letter")
+    // .regex(/[a-z]/,"Passsword must have atleast one lowerCase Letter")
+    // .regex(/[@!#$%^&*(),.?":{}|<>~]/,'Passsword must have atleast one symbol')
+    // .regex(/[0-9]/,'Passsword must have atleast one number')
 
      //check password strength using zxcvbn
- const isPasswordstrong=( async(password) =>
+ const isPasswordstrong=(async (password) =>
     {
           const result= zxcvbn(password);
           return result.score >= 3;
     }
     )
 
-    const validation =passwordSchema.safeParse(password);
+    // const validation = passwordSchema.safeParse(password);
 
-    if(!validation.success)
-    {
-        throw new ApiError(400,"Password is not provide according to instruction provided!!!")
-    }
-     
+    // if (!validation.success) {
+    //     throw new ApiError(400,"Password is not provided according to instruction!!!");
+    //     // res.status(400).json("Password is not provided according to instruction!!!");
+    //   } 
+
     //check the password is strong enough 
-    if(!isPasswordstrong(password))
+    const checkPasswordStrength= await isPasswordstrong(password) ;
+
+    if(!checkPasswordStrength)
     {
         const suggestedPassword =  generateStrongPassword();
-        return  new AsyncResponse("Password is weak!",405,suggestedPassword)
-    }
+        return res.status(400).json(new ApiResponse(400, "Password is weak!",suggestedPassword.toString()));
+        }
+
 
 //check if the user is already exists :via userName and email
  const existingUser = await User.findOne(
     { 
-    $or: [{ username }, { email },{fullName}] 
+    $or: [{ username }, { email }] 
     }
 )
-if(existingUser)
-    {
-        new ApiError(409, "User with email or username already exists");
-    }
+if (existingUser) {
+    throw new ApiError(409, "User already exist");
+  }
+  
 
  //check for images ,check for avtar ,image is not related to promote any kind of pornography\
 
@@ -160,15 +165,14 @@ let coverImageLocalPath;
          if(!avatar){
          new ApiError(400, "Avatar is required");
          }
-         console.log(avatar);
 
 //create user object and upload the entry on the database
          const user= await User.create(
             {
                 fullName,
                 email,
-                password,
-                avatar: avatar ?.url || (new ApiError(400,"it is a required field")),
+                password: password ,
+                avatar: avatar.url,
                 coverImage: coverImage?.url || "",
                 username:username.toLowerCase()
             }
@@ -190,3 +194,7 @@ const createdUser= await User.findById(user._id).select(
  )
 
 export {registerUser}
+
+
+//dns part 
+//google vision 
