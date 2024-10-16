@@ -246,6 +246,12 @@ const {refreshToken,accessToken}= await generateAccessAndRefressToken(user._id);
 
 const userLoggedIn=await User.findById(user._id).select("-password -refreshToken");
     //send cookies===== Remember always send refressToken and access token via cookies that are provided by cookieParser
+
+    const option = {
+        httpOnly: true,
+        secure: true
+    }
+
     return res.status(200).cookie("accessToken",accessToken,option).cookie("refressToken",refreshToken,option).json(
         new ApiResponse(
             200,
@@ -275,7 +281,30 @@ export {
 
 const logoutUser=asyncHandler(async (req,res)=>
 {
-  
+   //here the most important problem is that we donot have the access of user who was logged in and we will solve that problem by adding middleware in the loggedout route 
+     await User.findByIdAndUpdate(req.user._id,
+        {
+           $unset:
+           {
+            refreshToken:1  //this will the token from the field 
+           }
+        },
+        {
+           new:true
+        }
+     )
+
+     const option={
+        httpOnly:true,
+        secure:true
+     }
+     return res.status(200).cookie("accessToken","",option).cookie("refreshToken","",option).json
+     {
+    200,
+    "you loggedOut Sucessfully",
+    {}
+     }
+
 })
 
 //dns part :required valid registered domain  name 
