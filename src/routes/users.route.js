@@ -1,9 +1,11 @@
 import {Router} from "express"
-import { registerUser } from "../controllers/users.controllers.js"
+import { registerUser,loginUser } from "../controllers/users.controllers.js"
 import { upload } from "../middleware/multer.middleware.js"
 
 const router= Router()
 
+
+//register
 router.route("/register").post(upload.fields([
     {
        name:"avatar",
@@ -14,6 +16,13 @@ router.route("/register").post(upload.fields([
         maxCount:1
     }
 ]),registerUser)
+ 
+
+//login
+router.route("/login").post(loginUser)
+//logout 
+router.route("/logout").post(logoutUser)
+
 
 
 // upload.field is a middleware
