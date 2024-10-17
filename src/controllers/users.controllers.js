@@ -331,14 +331,104 @@ const refreshAccessToken=asyncHandler(async(req,res)=>
       )
    } 
 )
+
+
+// getCurrentUser
+
+const  getCurrentUser=asyncHandler(async(req,res)=>
+{
+    const user = req.user
+    if (!user) {
+        throw new ApiError(401, "Unauthorized request")
+    }
+    return res.status(200).json(new ApiResponse(200, "User found Sucessfully", user))
+
+})
+
+//update the avtar file
+
+const updateUserAvatar=asyncHandler(async(req,res)=>
+{
+    const userNewAvtar=req.file?.path
+   if(!userNewAvtar){
+    throw new ApiError(400,"Please upload a Valid image")
+     }
+
+    // upload the new avatar on cloudinary
+    const newAvatar=uploadOnCloudinary(userNewAvtar)
+ if(!newAvatar.url)
+ {
+    throw new ApiError(500,"Failed to upload the image")
+ }
+     const user=await User.findByIdAndUpdate(req.user._id,
+        {
+            $set:{
+                avtar:userNewAvtar.url
+            }
+        },
+        {
+            new:true
+        }
+     ).select("-password")
+     if(!user)
+     {
+        throw new ApiError(404,"User Not Found")
+     }
+     
+     return res.status(200).json(
+        new ApiResponse(200,"User Avtar Updated Successfully",user)
+     )
+})
+
+
+//update the covarImage file 
+
+    
+    const updateUserCoverImage=asyncHandler(async(req,res)=>
+    {
+        const userNewCoverImage=req.file?.path
+       if(!userNewCoverImage){
+        throw new ApiError(400,"Please upload a Valid CoverImage")
+         }
+    
+        // upload the new avatar on cloudinary
+        const newCoverImage=uploadOnCloudinary(userNewCoverImage)
+     if(!newCoverImage.url)
+     {
+        throw new ApiError(500,"Failed to upload the cover image")
+     }
+         const user=await User.findByIdAndUpdate(req.user._id,
+            {
+                $set:{
+                   coverImage:newCoverImage.url
+                }
+            },
+            {
+                new:true
+            }
+         ).select("-password")
+         if(!user)
+         {
+            throw new ApiError(404,"User Not Found")
+         }
+         
+         return res.status(200).json(
+            new ApiResponse(200,"User Cover Image  Updated Successfully",user)
+         )
+    })
+
+//
 //dns part :required valid registered domain  name 
 //google vision :biling process required on google vision 
 
 export {
     registerUser,
-    loginUser,
+    loginUser, 
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    getCurrentUser,
+    updateUserAvatar,
+    updateUserCoverImage
 }
 
 
@@ -348,7 +438,7 @@ export {
 
 
 //forgot password
-//reset password
+//reset password or change password
 //update user profile
 //update user password
 //delete user account
