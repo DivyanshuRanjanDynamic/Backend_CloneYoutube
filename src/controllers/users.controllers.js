@@ -265,18 +265,6 @@ const userLoggedIn=await User.findById(user._id).select("-password -refreshToken
 
 })
 
-
-
-
-
-
-export {
-    registerUser,
-    loginUser,
-    logoutUser,
-}
-
-
 //logout
 
 const logoutUser=asyncHandler(async (req,res)=>
@@ -298,25 +286,67 @@ const logoutUser=asyncHandler(async (req,res)=>
         httpOnly:true,
         secure:true
      }
-     return res.status(200).cookie("accessToken","",option).cookie("refreshToken","",option).json
-     {
-    200,
-    "you loggedOut Sucessfully",
-    {}
-     }
+     return res.status(200).cookie("accessToken","",option).cookie("refreshToken","",option).json(new ApiResponse(200, {}, "User logged Out"))
+    
+     
 
 })
+//refresh  access token  so that by using refress token only  we will login and perform different actions 
 
+const refreshAccessToken=asyncHandler(async(req,res)=>
+{  
+         //get the  password as token from user
+   
+     const getrefressTokenByuser=req.cookies.refreshToken || req.body.refreshToken
+ 
+     if (!getrefressTokenByuser) {
+         throw new ApiError(401, "unauthorized request")
+     }
+ 
+        //decode that refresh token and extact payload from it 
+ 
+        const decode=jwt.verify(getrefressTokenByuser,process.env.REFRESS_TOKEN)
+ 
+       //using that payload find the user from the database
+         const user=await User.findById(decode?._id)
+         if(!user){
+           throw  new ApiError(401,"Invalid Refress Token")
+         }
+ 
+         const {accessToken,refreshToken}=await generateAccessAndRefressToken(user._id)
+ 
+            if(user?.refreshToken !== getrefressTokenByuser){
+            throw  new ApiError(401,"Invalid Refresh Token")
+            }
+       const option={
+         httpOnly:true,
+         secure:true
+      }
+ 
+      return res.status(200).cookie("accessToken",accessToken,option).cookie("refreshToken",refreshToken,option).json(
+             new ApiResponse(200,"Your AccessToken refressed Now!!",{
+                 accessToken:accessToken,
+                 refreshToken:refreshToken
+             })
+      )
+   } 
+)
 //dns part :required valid registered domain  name 
 //google vision :biling process required on google vision 
 
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken
+}
 
 
 
 
 
 
-//refresh  access token  so that by using refress token only  we will login and perform different actions 
+
 //forgot password
 //reset password
 //update user profile

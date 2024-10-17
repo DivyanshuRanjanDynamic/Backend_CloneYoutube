@@ -1,17 +1,17 @@
-import { ApiError } from "../utils/apiError";
-import { asyncHandler } from "../utils/asyncHandler";
+import { ApiError } from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
-import { User } from "../modals/users.model";
+import { User } from "../modals/users.model.js";
 
  export const verifyJWT=asyncHandler(async(req, _,next)=>
  {
     try {
     
-       const token =req.cookie?.accessToken || req.headers("Authoization").replace("Bearer ","")
+       const token =req.cookies?.accessToken || req.header("Authoization").replace("Bearer ","")
    
        if(!token)
        {
-           throw new ApiError(401,"Unauthorized")
+           throw new ApiError(401,"Unauthorized token")
        }
        const decoded = jwt.verify(token,process.env.ACCESS_TOKEN)  // decode returns "payload " which is the one of the part of JWT (JSON Web Token) .
    
@@ -23,14 +23,15 @@ import { User } from "../modals/users.model";
    // Signature: Ensures the integrity of the token and verifies that it hasn't been tampered with.
    
    
-       const user =await User.findOne(decoded?._id).select("-password -refresstoken")
+       const user =await User.findOne(decoded?._id).select("-password -refreshToken")
        if(!user)
        {
            throw new ApiError(401,"Unauthorized")
        }
        req.user=user
    next()
- } catch (error) {
-    throw ApiError(400,"Invalid Access Token ");
+ } 
+ catch (error) {
+    throw new ApiError(400,error?.message,"Invalid Access Token ");
  }
  })
