@@ -416,7 +416,42 @@ const updateUserAvatar=asyncHandler(async(req,res)=>
             new ApiResponse(200,"User Cover Image  Updated Successfully",user)
          )
     })
+//reset password or change password
 
+const resetPassword=asyncHandler(async(req,res)=>
+{
+try {
+    const {previousPassword,newPassword,confirmPassword}=req.body
+    if(!previousPassword)
+    {
+        throw new ApiError(400,"Please fill all fields")
+    }
+      const user =await User.findById(req.user._id).some("-password - refreshToken")
+      const isPasswordCorrect=user.comparePassword(previousPassword)
+      if(!isPasswordCorrect)
+      {
+        throw new ApiError(400,"Unauthorized user")
+      }
+      if(!newPassword||!confirmPassword)
+      {
+        throw new ApiError(400,"Please fill both fields ")
+      }
+      if(newPassword!==confirmPassword)
+      {
+        throw new ApiError(400,"Passwords do not match")
+      }
+    //update in database 
+    user.password=newPassword
+     await user.save({validationBeforeSave:false})
+    
+    res.status(200).json(
+        new ApiResponse(200,"Password Updated Successfully",user)
+    )
+} catch (error) {
+    throw new ApiError(500,error.message)
+}
+}
+)
 //
 //dns part :required valid registered domain  name 
 //google vision :biling process required on google vision 
@@ -428,9 +463,8 @@ export {
     refreshAccessToken,
     getCurrentUser,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,resetPassword
 }
-
 
 
 
@@ -440,6 +474,9 @@ export {
 //forgot password
 //reset password or change password
 //update user profile
-//update user password
 //delete user account
 
+//auth through google and github 
+//learn 2fA
+//send email to user for verification
+//claude part
