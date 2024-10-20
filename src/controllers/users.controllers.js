@@ -217,7 +217,7 @@ try {
         await createdUser.save({validationBeforeSave:false})
     
         //send verification email
-        const verificationLink =`http://localhost:4000/verify/${verificationToken}`;
+        const verificationLink =`http://localhost:${process.env.PORT}/api/v1/users/verify/${verificationToken}`;
     
         await transporter.sendMail(
             {
@@ -241,8 +241,97 @@ try {
  //Email verification
  const verifyEmailToken=asyncHandler(async(req,res)=>
 {
+    try {
+        const user=await User.findById({verificationToken:req.params.token}).some("-password -refreshToken  -verificationToken")  //here i use params because we use the verificationToken in the router itself
+        if(!user)
+        {
+            throw new ApiError(400,"Invalid Token")
+        }
+        //update the user schema 
+        user.isVerified=true;
+        user.verificationToken=null;
+        await user.save({validationBeforeSave:false})
+        return res.status(200).json(201,"'Email verified successfully",user)
+    } 
+    catch (error) {
+        return res.status(500).json(new ApiError(500,"Something Went wrong in verifying the email"))
+    }
+})
+
+//forget password 
+const forgetPassword=asyncHandler(async(req,res)=>
+{
+ try {
+         const {email}=req.body
+         const user=await User.findOne({email}).select("-password -refreshToken  -verificationToken")
+         if(!user)
+         {
+           throw new ApiError(400,"Invalid Email")
+         }
+         //geterate the token using generateAccessTokenAndRefreshToken 
+         const {accessToken,refreshToken}=generateAccessAndRefressToken(user._id)
+         //update the user schema
+         user.refreshToken=refreshToken
+         await user.save({validationBeforeSave:false})
+   
+         //send the email to the user
+         const resetLink=`http:/localhost:${process.env.PORT}/api/v1/users/resetPassword`;
+         await transporter.sendMail(
+           {
+               from:process.env.MY_EMAIL,
+               to:email,
+               subject:"Reset your password",
+               text:`Please click  on this link to reset your password,Link is -> ${ resetLink}`
+           }
+         )
+         const option={
+            httpOnly:true
+            ,secure:true
+         }
+         return res.status(200).cookie("refreshToken",refreshToken,option).json( new ApiResponse(200,"Pssword Reset Email Sent Sucessfully",{refreshToken}))
+ }
+  catch (error) {
+    return res.status(500).json(new ApiError(500,"Something Went wrong in sending the email"))
+    
+ }
 
 })
+//reset password or change password
+
+const resetPassword=asyncHandler(async(req,res)=>
+    {
+    try {
+        const {previousPassword,newPassword,confirmPassword}=req.body
+        if(!previousPassword)
+        {
+            throw new ApiError(400,"Please fill all fields")
+        }
+          const user =await User.findById(req.user._id).some("-password - refreshToken")
+          const isPasswordCorrect=user.comparePassword(previousPassword)
+          if(!isPasswordCorrect)
+          {
+            throw new ApiError(400,"Unauthorized user")
+          }
+          if(!newPassword||!confirmPassword)
+          {
+            throw new ApiError(400,"Please fill both fields ")
+          }
+          if(newPassword!==confirmPassword)
+          {
+            throw new ApiError(400,"Passwords do not match")
+          }
+        //update in database 
+        user.password=newPassword
+         await user.save({validationBeforeSave:false})
+        
+        res.status(200).json(
+            new ApiResponse(200,"Password Updated Successfully",user)
+        )
+    } catch (error) {
+        throw new ApiError(500,error.message)
+    }
+    }
+    )
 
 
 //login
@@ -444,42 +533,7 @@ const updateUserAvatar=asyncHandler(async(req,res)=>
             new ApiResponse(200,"User Cover Image  Updated Successfully",user)
          )
     })
-//reset password or change password
 
-const resetPassword=asyncHandler(async(req,res)=>
-{
-try {
-    const {previousPassword,newPassword,confirmPassword}=req.body
-    if(!previousPassword)
-    {
-        throw new ApiError(400,"Please fill all fields")
-    }
-      const user =await User.findById(req.user._id).some("-password - refreshToken")
-      const isPasswordCorrect=user.comparePassword(previousPassword)
-      if(!isPasswordCorrect)
-      {
-        throw new ApiError(400,"Unauthorized user")
-      }
-      if(!newPassword||!confirmPassword)
-      {
-        throw new ApiError(400,"Please fill both fields ")
-      }
-      if(newPassword!==confirmPassword)
-      {
-        throw new ApiError(400,"Passwords do not match")
-      }
-    //update in database 
-    user.password=newPassword
-     await user.save({validationBeforeSave:false})
-    
-    res.status(200).json(
-        new ApiResponse(200,"Password Updated Successfully",user)
-    )
-} catch (error) {
-    throw new ApiError(500,error.message)
-}
-}
-)
 //update user profile
  const updateProfile=asyncHandler(async(req,res)=>
     {
@@ -543,7 +597,7 @@ export {
     getCurrentUser,
     updateUserAvatar,
     updateUserCoverImage,resetPassword,
-    updateProfile,deleteAccount,verifyEmailToken
+    updateProfile,deleteAccount,verifyEmailToken,forgetPassword
 }
 
 
