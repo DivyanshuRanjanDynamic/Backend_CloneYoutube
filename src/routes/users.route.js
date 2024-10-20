@@ -8,11 +8,11 @@ import { registerUser,
         updateUserCoverImage,
          resetPassword ,
          updateProfile,
-       deleteAccount,verifyEmailToken,forgetPassword
+       deleteAccount,verifyEmailToken,forgetPassword, onlyAdmin
     } from "../controllers/users.controllers.js"
 import { upload } from "../middleware/multer.middleware.js"
 import {verifyJWT} from "../middleware/auth.middleware.js"
-
+import {rolecheck} from "../middleware/roleCheck.middleware.js"
 const router= Router()
 
 
@@ -27,8 +27,6 @@ router.route("/register").post(upload.fields([
         maxCount:1
     }
 ]),registerUser)
- 
-
 //login
 router.route("/login").post(loginUser)
 //logout 
@@ -51,7 +49,8 @@ router.route("/deleteAccount").delete(verifyJWT,deleteAccount)
 router.route("/verify/:token").get(verifyJWT,verifyEmailToken)
 //Forget password
 router.route("/forgetPassword").post(forgetPassword)
-
+// Admin only route 
+router.route("/admin").get(verifyJWT,rolecheck(['admin']), onlyAdmin)
 
 
 // upload.field is a middleware

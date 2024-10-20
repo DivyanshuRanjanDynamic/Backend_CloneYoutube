@@ -583,9 +583,17 @@ const deleteAccount=asyncHandler(async(req,res)=>
    }
 })
 
+// admin-only 
+const  onlyAdmin=asyncHandler(async(req,res)=>
+{
+    return res.status(200).json(new ApiResponse (200,"welcome to admin area"))
+})
+
+//learn 2fA:-When a user opts into 2FA, we'll generate a secret key using Speakeasy and store it securely in our database.(here we generate and store the Secret )
+        // :-When the user attempts to log in, if 2FA is enabled, we need to verify that code that they enter.(verify)
+ //        :-we can generate a QR code for easier 2FA setup. Using qrcode package, generate a QR code for the user.(optional)
 
 
-//
 //dns part :required valid registered domain  name 
 //google vision :biling process required on google vision 
 
@@ -597,7 +605,8 @@ export {
     getCurrentUser,
     updateUserAvatar,
     updateUserCoverImage,resetPassword,
-    updateProfile,deleteAccount,verifyEmailToken,forgetPassword
+    updateProfile,deleteAccount,verifyEmailToken,forgetPassword,
+    onlyAdmin
 }
 
 
@@ -605,9 +614,5 @@ export {
 
 
 
-//forgot password
 //auth through google and github 
-//learn 2fA
-//send email to user for verification
 //claude part
-// Email sending 
