@@ -11,7 +11,8 @@ import { ImageAnnotatorClient } from '@google-cloud/vision';//Import the Google 
  import  {uploadOnCloudinary} from "../utils/cloudinary.js"
 import bcrypt from "bcrypt";
 import {transporter} from "../utils/mailer.util.js";
-
+import qrcode from 'qrcode';
+import session from 'express-session';
 
 
  const client = new ImageAnnotatorClient({
@@ -28,7 +29,7 @@ import {transporter} from "../utils/mailer.util.js";
     
         //save the refresh token  on the database
         user.refreshToken=refreshToken
-        await user.save()
+        await user.save({ validateBeforeSave: false })
     
         return { accessToken,refreshToken}
     } catch (error) {
@@ -361,9 +362,20 @@ if(!isPasswordValid){
  //generate the Access and refresh  token 
 const {refreshToken,accessToken}= await generateAccessAndRefressToken(user._id);
 
+if( user.istwoFactorEnabled){
+  // Store partially authenticated status in session
+  req.session.username = username;
+   req.session.isAuthenticated=false;// Not fully authenticated until 2FA is verified
+
+   //redirect the 2Fa verification page
+   res.redirect('/verify2FA');
+}
+else{
 const userLoggedIn=await User.findById(user._id).select("-password -refreshToken");
     //send cookies===== Remember always send refressToken and access token via cookies that are provided by cookieParser
 
+
+    
     const option = {
         httpOnly: true,
         secure: true
@@ -377,8 +389,9 @@ const userLoggedIn=await User.findById(user._id).select("-password -refreshToken
             accessToken,
             refreshToken
           }  ,
-            "User Login Sucessfully")
+            "User Login Sucessfully.Please provide 2FA token")
     )
+}
 
 })
 
@@ -591,8 +604,54 @@ const  onlyAdmin=asyncHandler(async(req,res)=>
 
 //learn 2fA:-When a user opts into 2FA, we'll generate a secret key using Speakeasy and store it securely in our database.(here we generate and store the Secret )
         // :-When the user attempts to log in, if 2FA is enabled, we need to verify that code that they enter.(verify)
- //        :-we can generate a QR code for easier 2FA setup. Using qrcode package, generate a QR code for the user.(optional)
+ //       :-we can generate a QR code for easier 2FA setup. Using qrcode package, generate a QR code for the user.(optional)
 
+
+ //enable 2fa
+ const enable2fa=asyncHandler(async(req,res)=>
+ {
+    try {
+         const user=await User.findById(req.user._id).select("-password ")
+         if(!user)
+         {
+            throw new ApiError(400,"Unothorized User")
+         }
+         const secret=await generateSecret(user._id)
+        user.twoFactorSecret=secret.base32 ; // Store base32 encoded secret in a session 
+         user.istwoFactorEnabled=true;
+         await user.save({verificationBeforeSave:false})
+
+         //generate QR code 
+        const  otpAuthUrl=speakeasy.otpauthURL({
+            secret: secret,
+            label: user.email,
+            issuer: 'SyncHubb'
+        });
+        const qrCodeDataUrl=await qrcode.toDataURL( otpAuthUrl)
+    
+          return res.status(200).json(new ApiResponse(201,"Two-factor authentication enabled",{  secret: secret.base32,  qrCode: qrCodeDataUrl}))
+    } 
+    catch (error) {
+        throw new ApiError(500,error.message)
+    }
+ })
+
+ //verify 2fa
+ const verification2fa=asyncHandler(async(req,res)=>
+ {
+    res.json({ message: '2FA verification successful. You are now fully logged in!' });
+ })
+//protected route(require full login + 2FA)
+const protect=asyncHandler(async(req,res)=>
+{
+    const user = await User.findById(req.user._id);
+    if (req.session.isFullyAuthenticated && user.isTwoFactorEnabled ) {
+        res.status(200).json(new ApiResponse(201,{ message: 'Welcome to the protected route! You are fully authenticated.' }));
+      } else {
+        throw new ApiError(400,"Complete 2FA authentication")
+     
+      }
+})
 
 //dns part :required valid registered domain  name 
 //google vision :biling process required on google vision 
@@ -606,7 +665,8 @@ export {
     updateUserAvatar,
     updateUserCoverImage,resetPassword,
     updateProfile,deleteAccount,verifyEmailToken,forgetPassword,
-    onlyAdmin
+    onlyAdmin,enable2fa, verification2fa,protect
+
 }
 
 
