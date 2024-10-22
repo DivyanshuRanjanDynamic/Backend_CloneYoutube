@@ -16,6 +16,7 @@ import {rolecheck} from "../middleware/roleCheck.middleware.js"
 import {verify2FA} from "../middleware/2FA.middleware.js"
 
 
+
 const router= Router()
 
 
@@ -55,11 +56,16 @@ router.route("/forgetPassword").post(forgetPassword)
 // Admin only route 
 router.route("/admin").get(verifyJWT,rolecheck(['admin']),verify2FA, onlyAdmin)
 //enable 2FA
-router.route("/enable2FA").patch(verifyJWT,enable2fa)
+router.route("/enable2FA").patch(verifyJWT,rolecheck(['user', 'admin']),enable2fa)
 //verify 2FA
-router.route("/verify2FA").patch(verifyJWT,verify2FA,verification2fa)
+router.route("/verify2FA").patch(verifyJWT,rolecheck(['user', 'admin']),verify2FA,verification2fa)
 //protected route to ensure both login + 2FA done
 router.route("/protect").patch(verifyJWT,verify2FA,protect)
+
+
+
+
+
 // upload.field is a middleware
 //upload.field is used to upload images ,files etc to local server using multer
 

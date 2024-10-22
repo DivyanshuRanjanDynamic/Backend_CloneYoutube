@@ -2,6 +2,12 @@ import express from "express";
 const app =express();
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import ratelimit from "express-rate-limit"
+import helmet from "helmet"
+import compression from "compression";
+import session from "express-session"
+import  passport from "passport";
+
 
 
 app.use(cors({
@@ -20,13 +26,38 @@ app.use( express.urlencoded({extended:true,limit:"16kb"}))
 app.use(express.static("public"));
 // the cookieParser() middleware allows the server to read cookies from the client side (by parsing them) so that we can access and use them in our server-side logic. 
 app.use(cookieParser())
+//helmet 
+app.use(helmet());
+//compression 
+app.use(compression());
+//rateLimit 
+app.use(ratelimit)
+
+//Setup Session 
+app.use(session(
+    {
+        secret: process.env.SESSION_SECRET,
+        resave: false,//saved the session even if it was unmodified 
+        saveUninitialized:false ,//for the session that is unintialized to be saved 
+        cookie: {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        }
+
+   }
+))
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 
 // importing all routers
 
 import userRouter from "./routes/users.route.js"
 
 app.use("/api/v1/users", userRouter)  //middleware is use to connect the routers
-
+app.use("/api/v1/auth",authRouter)  //middleware is use to connect the routers
 
 
 
