@@ -1,6 +1,6 @@
 import rateLimit from "express-rate-limit"
 
-export const  ratelimiter=rateLimit(
+export const limiter=rateLimit(
         {
             windowMs : 15 * 60 * 1000, //15 minutes,
             max:(admin)=>  // limit admin  IP to 500 requests per windowMs and  for users IP to 100 requests per windowMs. 
