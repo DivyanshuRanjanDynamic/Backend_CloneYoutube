@@ -1,6 +1,7 @@
  import {ApiError} from "../utils/apiError.js";
  
- const rolecheck=(role)=>(req,res,next)=>
+ const rolecheck=(role)=>
+  return (req,res,next)=>
 {
     if(!req.user)
     {
