@@ -56,8 +56,8 @@ app.use(passport.session());
 
 import userRouter from "./routes/users.route.js"
 
-app.use("/api/v1/users", userRouter)  //middleware is use to connect the routers
-app.use("/api/v1/auth",authRouter)  //middleware is use to connect the routers
+app.use("/api/v1/users",limiter, userRouter)  //middleware is use to connect the routers
+app.use("/api/v1/auth",limiter,authRouter)  //middleware is use to connect the routers
 
 
 
