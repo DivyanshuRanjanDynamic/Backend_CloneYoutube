@@ -7,7 +7,7 @@ import helmet from "helmet"
 import compression from "compression";
 import session from "express-session"
 import  passport from "passport";
-
+import {limiter} from "../middleware/rateLimiter.middleware.js"
 
 
 app.use(cors({
