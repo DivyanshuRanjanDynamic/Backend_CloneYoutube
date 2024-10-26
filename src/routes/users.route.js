@@ -44,7 +44,7 @@ router.route("/updateUserAvatar").patch(verifyJWT,upload.single("avatar"), updat
 //update user cover Image
 router.route("/updateUserCoverImage").patch(verifyJWT,upload.single("coverImage"), updateUserCoverImage)
 //for  changing or resetting password
-router.route("/resetPassword").patch(verifyJWT,verify2FA,resetPassword)
+router.route("/resetPassword/:token").patch(verifyJWT,verify2FA,resetPassword)
 //updateProfile
 router.route("/updateProfile").patch(verifyJWT,updateUserCoverImage,updateUserAvatar, updateProfile)
 //delete account
