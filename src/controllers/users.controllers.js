@@ -275,7 +275,7 @@ const forgetPassword=asyncHandler(async(req,res)=>
          user.refreshToken=refreshToken
          await user.save({validationBeforeSave:false})
    
-         //send the email to the user
+         //send the email to the user with reset link 
          const resetLink=`http:/localhost:${process.env.PORT}/api/v1/users/resetPassword`;
          await transporter.sendMail(
            {
